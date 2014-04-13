@@ -1,4 +1,4 @@
-Burp Heartbleed Extension
+Burp Suite Heartbleed Bug Extension
 =======================
 
 This extension adds a new tab to Burp's Suite main UI and tests a server against the Heartbleed Bug, in case the server is vulnerable, data in server's memory will be dumped and viewed.
