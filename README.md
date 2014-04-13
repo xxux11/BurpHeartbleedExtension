@@ -11,7 +11,7 @@ Requirement:
 
 Installation:
 
-    Donwload Heartbleed.jar from github
+    Donwload Heartbleed.jar and add it in burp's Extender tab
     Configure your burp suite to use Jython under Extender/Options/Python environment
 
 
