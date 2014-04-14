@@ -7,7 +7,7 @@ The Heartbleed Bug is a serious vulnerability in the popular OpenSSL cryptograph
 
 Requirement:
 
-    Jython
+    Jython 2.7 or above
 
 Installation:
 
